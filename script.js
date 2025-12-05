@@ -1,3 +1,19 @@
+// script.js
+import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyApt5XYht8LLg7_khCNaRNH5iVF7COuRZ0",
+  authDomain: "dogum-gunu-232e7.firebaseapp.com",
+  projectId: "dogum-gunu-232e7",
+  storageBucket: "dogum-gunu-232e7.firebasestorage.app",
+  messagingSenderId: "113880436778",
+  appId: "1:113880436778:web:8ba400d799def3edf4f353"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
 // ===== Config =====
 const UNLOCK_DATE = new Date('2025-12-26T00:00:00+03:00'); // Ankara (GMT+3)
 const STORAGE_KEY = 'envelopes.v11';
@@ -351,4 +367,5 @@ function renderEnvelopeDetail() {
     });
   }
 }
+
 
