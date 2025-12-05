@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Zarf Detayı</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <h1>Zarf</h1>
+    <nav><a href="zarflar.html">Zarflar</a></nav>
+  </header>
+
+  <main class="container">
+    <div class="envelope envelope--large" id="envelopeDetail">
+      <div class="envelope-flap"></div>
+      <div class="stamp-area">
+        <div id="logoOrEmoji" class="stamp"></div>
+        <button id="toggleEmoji" class="btn">Emoji</button>
+      </div>
+      <div class="address"><strong>Kimden:</strong> <span id="fromName">—</span></div>
+      <div class="thread"></div>
+    </div>
+
+    <div id="lockPanel" class="card"><p>Bu zarf 26 Aralık’ta açılacak.</p><p id="detailCountdown"></p></div>
+    <div id="contentPanel" class="card" hidden>
+      <h2>Mesaj</h2>
+      <div id="messageContent"></div>
+      <div id="adminEdit" hidden>
+        <textarea id="editContent"></textarea>
+        <button id="saveEdit" class="btn primary">Kaydet</button>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p class="muted">26 Aralık sonrası içerik görünür. Admin modda her zaman görünür.</p>
+  </footer>
+
+  <script src="script.js"></script>
+  <script>pageInit('detail');</script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Zarf Yaz</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <h1>Zarf Yaz</h1>
+    <nav><a href="zarflar.html">Zarflar</a></nav>
+  </header>
+
+  <main class="container">
+    <form id="envelopeForm" class="card">
+      <div class="form-row">
+        <label for="sender">Gönderen (Adınız)</label>
+        <input id="sender" type="text" required />
+      </div>
+
+      <div class="form-row">
+        <label for="color">Zarf Rengi</label>
+        <select id="color" required>
+          <option value="#fbfbf7">Beyaz</option>
+          <option value="#fecaca">Kırmızı</option>
+          <option value="#bfdbfe">Mavi</option>
+          <option value="#bbf7d0">Yeşil</option>
+        </select>
+      </div>
+
+      <div class="form-row stamp-input">
+        <label for="logo">Logo (PNG/JPG)</label>
+        <input id="logo" type="file" accept="image/*" />
+        <button id="emojiToggle" type="button" class="btn">Logo/Emoji</button>
+        <input id="emoji" type="text" placeholder="😊 🎉 ❤️" style="display:none;" />
+      </div>
+
+      <div class="form-row">
+        <label for="content">Mesaj</label>
+        <textarea id="content" rows="8" required></textarea>
+        <small id="banHint" class="hint">Yasaklı kelime kontrolü: sadece içerikte yapılır.</small>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn primary">Zarfı Oluştur</button>
+      </div>
+    </form>
+  </main>
+
+  <footer class="site-footer">
+    <p>26 Aralık’ta açılacak.</p>
+  </footer>
+
+  <script src="script.js"></script>
+  <script>pageInit('index');</script>
+</body>
+</html>
