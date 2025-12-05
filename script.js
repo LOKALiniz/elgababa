@@ -171,3 +171,72 @@ async function renderEnvelopeDetail(){
   if(!envDoc){document.getElementById("messageContent").textContent="Zarf bulunamadı.";return;}
   const env={id:envDoc.id,...envDoc.data()};
   const fromName=document.getElementById("fromName");
+  fromName.textContent = env.from || "—";
+
+  // Pul/Logo/Emoji render
+  function renderStamp() {
+    if (env.showEmoji && env.emoji) {
+      logoOrEmoji.innerHTML = "";
+      logoOrEmoji.className = "stamp";
+      logoOrEmoji.textContent = env.emoji;
+    } else if (env.logo) {
+      logoOrEmoji.innerHTML =
+        `<img src="${env.logo}" class="stamp" style="border:2px dashed #94d3f1;border-radius:6px;background:#fff;object-fit:contain;" />`;
+    } else {
+      logoOrEmoji.innerHTML = "";
+      logoOrEmoji.className = "stamp";
+    }
+  }
+  renderStamp();
+
+  // Emoji toggle detayda
+  toggleEmojiBtn.addEventListener("click", async () => {
+    env.showEmoji = !env.showEmoji;
+    await updateDoc(doc(db, "envelopes", env.id), { showEmoji: env.showEmoji });
+    renderStamp();
+  });
+
+  // İçerik kilidi (admin bypass)
+  function updateView() {
+    if (isLocked() && !adminMode) {
+      lockPanel.hidden = false;
+      contentPanel.hidden = true;
+      countdown.textContent = formatCountdown(UNLOCK_DATE);
+    } else {
+      lockPanel.hidden = true;
+      contentPanel.hidden = false;
+
+      if (adminMode) {
+        // Admin düzenleme
+        adminEdit.hidden = false;
+        document.getElementById("editContent").value = env.content || "";
+        messageContent.innerHTML = "";
+      } else {
+        adminEdit.hidden = true;
+        messageContent.textContent = env.content || "";
+      }
+    }
+  }
+  updateView();
+
+  // Geri sayımı her saniye güncelle
+  const interval = setInterval(() => {
+    updateView();
+    if (!isLocked()) clearInterval(interval);
+  }, 1000);
+
+  // Admin içeriği kaydet
+  if (saveEdit) {
+    saveEdit.addEventListener("click", async () => {
+      const newContent = document.getElementById("editContent").value;
+      if (containsBannedWords(newContent)) {
+        alert("Mesaj yasaklı kelime içeriyor. Lütfen düzenleyin.");
+        return;
+      }
+      await updateDoc(doc(db, "envelopes", env.id), { content: newContent });
+      alert("Mesaj güncellendi.");
+      updateView();
+    });
+  }
+}
+
