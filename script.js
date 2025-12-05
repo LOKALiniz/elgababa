@@ -43,12 +43,15 @@ function isLocked() { return new Date() < UNLOCK_DATE; }
 function formatCountdown(target) {
   const diff = target - new Date();
   if (diff <= 0) return 'Kilidi açıldı.';
-  const d = Math.floor(diff / 86400000);
-  const h = Math.floor((diff / 3600000) % 24);
-  const m = Math.floor((diff / 60000) % 60);
-  const s = Math.floor((diff / 1000) % 60);
-  return `Kalan: ${d}g ${h}s ${m}d ${s}sn`;
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+  const minutes = Math.floor((diff / (1000 * 60)) % 60);
+  const seconds = Math.floor((diff / 1000) % 60);
+
+  return `Kalan: ${days} gün ${hours} saat ${minutes} dakika ${seconds} saniye`;
 }
+
 
 // ===== Router =====
 function pageInit(kind) {
@@ -348,3 +351,4 @@ function renderEnvelopeDetail() {
     });
   }
 }
+
