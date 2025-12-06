@@ -4,12 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Zarf Detay</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <h1>Zarf Detay</h1>
   <div><strong>Kimden:</strong> <span id="fromName"></span></div>
   <div id="logoOrEmoji"></div>
-  <button id="toggleEmojiBtn">Emoji Toggle</button>
+  <button id="toggleEmojiBtn" class="btn">Emoji Toggle</button>
 
   <div id="lockPanel">🔒 Kilitli. <span id="countdown"></span></div>
   <div id="contentPanel" hidden>
@@ -19,10 +20,10 @@
   <!-- Admin düzenleme -->
   <div id="adminEdit" hidden>
     <textarea id="editContent"></textarea>
-    <button id="saveEdit">Kaydet</button>
+    <button id="saveEdit" class="btn">Kaydet</button>
   </div>
 
-  <button id="adminToggle">Admin Mod</button>
+  <button id="adminToggle" class="btn">Admin Mod</button>
 
   <script type="module" src="script.js"></script>
 </body>
