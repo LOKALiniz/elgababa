@@ -4,25 +4,20 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Zarflar</title>
-  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header class="site-header">
-    <h1>Zarflar</h1>
-    <nav>
-      <a href="index.html">Yeni Zarf Yaz</a>
-    </nav>
-  </header>
+  <h1>Zarflar</h1>
+  <nav><a href="index.html">Yeni Zarf Yaz</a></nav>
 
-  <main class="container">
-    <div id="envelopeGrid" class="grid"></div>
-  </main>
+  <div id="envelopeGrid"></div>
 
-  <footer class="site-footer">
-    <p>26 Aralık’ta açılacak.</p>
-  </footer>
+  <!-- Admin panel -->
+  <button id="adminToggle">Admin Mod</button>
+  <div id="adminPanel" hidden>
+    <button id="deleteAll">Tüm Zarfları Sil</button>
+    <button id="exitAdmin">Admin Moddan Çık</button>
+  </div>
 
-  <!-- Firebase ve script -->
   <script type="module" src="script.js"></script>
 </body>
 </html>
