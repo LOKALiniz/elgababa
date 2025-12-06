@@ -1,8 +1,20 @@
-// ===== Firebase import =====
+/***********************
+ * Firebase Bağlantısı *
+ ***********************/
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  doc,
+  updateDoc,
+  deleteDoc,
+  onSnapshot,
+  query,
+  orderBy
+} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-// ===== Config =====
 const firebaseConfig = {
   apiKey: "AIzaSyApt5XYht8LLg7_khCNaRNH5iVF7COuRZ0",
   authDomain: "dogum-gunu-232e7.firebaseapp.com",
@@ -14,229 +26,376 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// ===== Config =====
+/******************
+ * Genel Ayarlar  *
+ ******************/
 const UNLOCK_DATE = new Date("2025-12-26T00:00:00+03:00");
-const BANNED_WORDS = ["davut","davud","daut","büber","buber","bueber","bubér"];
 let adminMode = false;
 
-// ===== Utils =====
-function normalizeText(str){return (str||"").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g,"").replace(/ı/g,"i").trim();}
-function containsBannedWords(text){const t=normalizeText(text);return BANNED_WORDS.some(w=>t.includes(normalizeText(w)));}
-function isLocked(){return new Date()<UNLOCK_DATE;}
+const BANNED_WORDS = ["davut","davud","daut","büber","buber","bueber","bubér"];
+function normalizeText(str){
+  return (str||"").toLowerCase().normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/ı/g,"i")
+    .trim();
+}
+function containsBannedWords(text){
+  const t = normalizeText(text);
+  return BANNED_WORDS.some(w => t.includes(normalizeText(w)));
+}
+function isLocked(){
+  return new Date() < UNLOCK_DATE;
+}
 function formatCountdown(target){
-  const diff=target-new Date();
-  if(diff<=0) return "Kilidi açıldı.";
-  const d=Math.floor(diff/86400000);
-  const h=Math.floor((diff/3600000)%24);
-  const m=Math.floor((diff/60000)%60);
-  const s=Math.floor((diff/1000)%60);
+  const diff = target - new Date();
+  if(diff <= 0) return "Kilidi açıldı.";
+  const d = Math.floor(diff/86400000);
+  const h = Math.floor((diff/3600000)%24);
+  const m = Math.floor((diff/60000)%60);
+  const s = Math.floor((diff/1000)%60);
   return `Kalan: ${d} gün ${h} saat ${m} dakika ${s} saniye`;
 }
 
-// ===== Router =====
-export function pageInit(kind){
-  if(kind==="index") initEnvelopeForm();
-  if(kind==="list") { setupAdmin(); renderEnvelopeList(); }
-  if(kind==="detail") renderEnvelopeDetail();
-}
+/******************
+ * Router/Boot     *
+ ******************/
+document.addEventListener("DOMContentLoaded", () => {
+  const path = window.location.pathname;
+  if (path.endsWith("/") || path.endsWith("index.html")) initEnvelopeForm();
+  else if (path.endsWith("zarflar.html")) initListPage();
+  else if (path.endsWith("zarf.html")) initDetailPage();
+});
 
-// ===== index.html =====
+/***********************
+ * Index: Zarf Yazma   *
+ ***********************/
 function initEnvelopeForm(){
-  const form=document.getElementById("envelopeForm");
-  const banHint=document.getElementById("banHint");
-  const emojiToggle=document.getElementById("emojiToggle");
-  const logoInput=document.getElementById("logo");
-  const emojiInput=document.getElementById("emoji");
-  const birthdayBtn=document.getElementById("birthdayEnvelope");
+  const form = byId("envelopeForm");
+  const birthdayBtn = byId("birthdayEnvelope");
+  const emojiToggle = byId("emojiToggle");
+  const logoInput = byId("logo");
+  const emojiInput = byId("emoji");
+  const banHint = byId("banHint");
 
-  // Doğum günü butonu
-  if(birthdayBtn){
-    birthdayBtn.addEventListener("click",()=>{
-      document.getElementById("content").value="Doğum günün kutlu olsun 🎂🎉 Nice mutlu senelere...";
+  // Doğum günü hızlı mesaj
+  if (birthdayBtn) {
+    birthdayBtn.addEventListener("click", () => {
+      byId("content").value = "Doğum günün kutlu olsun 🎂🎉 Nice mutlu senelere...";
       alert("Doğum günü için özel mesaj eklendi. İstersen düzenleyebilirsin.");
     });
   }
 
   // Logo/Emoji toggle
-  emojiToggle.addEventListener("click",()=>{
-    const logoVisible=logoInput.style.display!=="none";
-    if(logoVisible){
-      logoInput.style.display="none";
-      emojiInput.style.display="inline-block";
-    }else{
-      logoInput.style.display="inline-block";
-      emojiInput.style.display="none";
-    }
-  });
+  if (emojiToggle) {
+    emojiToggle.addEventListener("click", () => {
+      const logoVisible = logoInput.style.display !== "none";
+      if (logoVisible) {
+        logoInput.style.display = "none";
+        emojiInput.style.display = "inline-block";
+      } else {
+        logoInput.style.display = "inline-block";
+        emojiInput.style.display = "none";
+      }
+    });
+  }
 
-  form.addEventListener("submit",async e=>{
+  // Submit → Firestore’a kaydet
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const sender=document.getElementById("sender").value.trim();
-    const content=document.getElementById("content").value.trim();
-    const color=document.getElementById("color").value;
-    const emoji=(emojiInput.value||"").trim();
+    const from = byId("sender").value.trim();
+    const content = byId("content").value.trim();
+    const color = byId("color").value;
+    const emoji = (emojiInput.value || "").trim();
 
-    if(!sender||!content){alert("Gönderen ve Mesaj zorunlu.");return;}
-    if(containsBannedWords(content)){
-      banHint.textContent="Mesajda yasaklı kelime var!";
+    if (!from || !content) {
+      alert("Gönderen ve mesaj zorunlu.");
+      return;
+    }
+    if (containsBannedWords(content)) {
+      banHint.textContent = "Mesajda yasaklı kelime var!";
       banHint.classList.add("error");
       alert("Mesaj yasaklı kelime içeriyor.");
       return;
     }
 
-    let logoData=null;
-    if(logoInput.files&&logoInput.files[0]){
-      const reader=new FileReader();
-      reader.onload=async()=>{logoData=reader.result;await saveEnvelope(sender,content,color,logoData,emoji);};
-      reader.readAsDataURL(logoInput.files[0]);
-    }else{
-      await saveEnvelope(sender,content,color,logoData,emoji);
+    // Logo dosyası base64 olarak eklenir (küçük dosyalar için pratik)
+    let logoData = null;
+    const file = logoInput.files && logoInput.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        logoData = reader.result;
+        await saveEnvelope({ from, content, color, logo: logoData, emoji, showEmoji: !!emoji });
+      };
+      reader.readAsDataURL(file);
+    } else {
+      await saveEnvelope({ from, content, color, logo: logoData, emoji, showEmoji: !!emoji });
     }
   });
 }
 
-async function saveEnvelope(from,content,color,logo,emoji){
-  const env={from,content,color,logo,emoji,showEmoji:!!emoji,createdAt:new Date().toISOString()};
-  await addDoc(collection(db,"envelopes"),env);
+async function saveEnvelope(env){
+  const payload = {
+    ...env,
+    createdAt: new Date().toISOString()
+  };
+  await addDoc(collection(db, "envelopes"), payload);
   alert("Zarf kaydedildi!");
-  window.location.href="zarflar.html";
+  // Liste sayfasına yönlendir
+  window.location.href = "zarflar.html";
 }
 
-// ===== zarflar.html =====
-async function renderEnvelopeList(){
-  const grid=document.getElementById("envelopeGrid");
-  const snapshot=await getDocs(collection(db,"envelopes"));
-  const list=snapshot.docs.map(doc=>({id:doc.id,...doc.data()})).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
-  grid.innerHTML="";
-  if(list.length===0){grid.innerHTML="<p class='muted'>Henüz zarf yok.</p>";return;}
+/*************************
+ * Zarflar: Liste Sayfa  *
+ *************************/
+function initListPage(){
+  const grid = byId("envelopeGrid");
+  const adminToggle = makeAdminControls();
 
-  for(const env of list){
-    const card=document.createElement("div");
-    card.className="envelope-card";
-    const stampHtml=env.showEmoji&&env.emoji?`<div class="stamp">${env.emoji}</div>`:(env.logo?`<img src="${env.logo}" class="stamp" />`:`<div class="stamp"></div>`);
-    card.innerHTML=`
-      <div class="envelope envelope--small" style="background:${env.color||"#fbfbf7"}">
-        <div class="envelope-flap"></div>
-        <div class="stamp-area">${stampHtml}<button class="toggleEmoji btn">Emoji</button></div>
-        <div class="address"><strong>Kimden:</strong> ${env.from||"—"}</div>
-        <div class="thread"></div>
-      </div>
-      ${adminMode?`<button class="btn danger deleteBtn">Sil</button>`:""}
-    `;
-    card.querySelector(".envelope").addEventListener("click",()=>{window.location.href=`zarf.html?id=${env.id}`;});
-    card.querySelector(".toggleEmoji").addEventListener("click",async e=>{
-      e.stopPropagation();
-      env.showEmoji=!env.showEmoji;
-      await updateDoc(doc(db,"envelopes",env.id),{showEmoji:env.showEmoji});
-      renderEnvelopeList();
-    });
-    if(adminMode){
-      card.querySelector(".deleteBtn").addEventListener("click",async e=>{
-        e.stopPropagation();
-        if(confirm("Silmek istiyor musun?")){await deleteDoc(doc(db,"envelopes",env.id));renderEnvelopeList();}
-      });
-    }
-    grid.appendChild(card);
-  }
-}
-
-function setupAdmin(){
-  const adminToggle=document.getElementById("adminToggle");
-  const adminPanel=document.getElementById("adminPanel");
-  const deleteAllBtn=document.getElementById("deleteAll");
-  const exitAdmin=document.getElementById("exitAdmin");
-
-  adminPanel.hidden=!adminMode;
-  adminToggle.addEventListener("click",()=>{
-    const pass=prompt("Admin şifresi:");
-    if(pass==="2009"){adminMode=true;adminPanel.hidden=false;renderEnvelopeList();alert("Admin mod aktif.");}
-    else alert("Yanlış şifre!");
-  });
-  deleteAllBtn.addEventListener("click",async()=>{
-    if(confirm("Tüm zarfları silmek istiyor musun?")){
-      const snapshot=await getDocs(collection(db,"envelopes"));
-      snapshot.forEach(async d=>await deleteDoc(d.ref));
-      renderEnvelopeList();
-    }
-  });
-  exitAdmin.addEventListener("click",()=>{adminMode=false;adminPanel.hidden=true;renderEnvelopeList();alert("Admin mod kapatıldı.");});
-}
-
-// ===== zarf.html =====
-async function renderEnvelopeDetail(){
-  const params=new URLSearchParams(window.location.search);
-  const id=params.get("id");
-  const snapshot=await getDocs(collection(db,"envelopes"));
-  const envDoc=snapshot.docs.find(d=>d.id===id);
-  if(!envDoc){document.getElementById("messageContent").textContent="Zarf bulunamadı.";return;}
-  const env={id:envDoc.id,...envDoc.data()};
-  const fromName=document.getElementById("fromName");
-  fromName.textContent = env.from || "—";
-
-  // Pul/Logo/Emoji render
-  function renderStamp() {
-    if (env.showEmoji && env.emoji) {
-      logoOrEmoji.innerHTML = "";
-      logoOrEmoji.className = "stamp";
-      logoOrEmoji.textContent = env.emoji;
-    } else if (env.logo) {
-      logoOrEmoji.innerHTML =
-        `<img src="${env.logo}" class="stamp" style="border:2px dashed #94d3f1;border-radius:6px;background:#fff;object-fit:contain;" />`;
-    } else {
-      logoOrEmoji.innerHTML = "";
-      logoOrEmoji.className = "stamp";
-    }
-  }
-  renderStamp();
-
-  // Emoji toggle detayda
-  toggleEmojiBtn.addEventListener("click", async () => {
-    env.showEmoji = !env.showEmoji;
-    await updateDoc(doc(db, "envelopes", env.id), { showEmoji: env.showEmoji });
-    renderStamp();
+  // Realtime dinleme (yeni zarf anında düşer)
+  const q = query(collection(db, "envelopes"), orderBy("createdAt", "desc"));
+  onSnapshot(q, (snap) => {
+    const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderEnvelopeList(grid, list);
   });
 
-  // İçerik kilidi (admin bypass)
-  function updateView() {
-    if (isLocked() && !adminMode) {
-      lockPanel.hidden = false;
-      contentPanel.hidden = true;
-      countdown.textContent = formatCountdown(UNLOCK_DATE);
-    } else {
-      lockPanel.hidden = true;
-      contentPanel.hidden = false;
-
-      if (adminMode) {
-        // Admin düzenleme
-        adminEdit.hidden = false;
-        document.getElementById("editContent").value = env.content || "";
-        messageContent.innerHTML = "";
-      } else {
-        adminEdit.hidden = true;
-        messageContent.textContent = env.content || "";
-      }
-    }
-  }
-  updateView();
-
-  // Geri sayımı her saniye güncelle
-  const interval = setInterval(() => {
-    updateView();
-    if (!isLocked()) clearInterval(interval);
+  // Her saniye geri sayımı güncelle (tek satırlık footer veya kartlarda)
+  setInterval(() => {
+    const counters = document.querySelectorAll("[data-countdown]");
+    counters.forEach(el => el.textContent = formatCountdown(UNLOCK_DATE));
   }, 1000);
 
-  // Admin içeriği kaydet
-  if (saveEdit) {
-    saveEdit.addEventListener("click", async () => {
-      const newContent = document.getElementById("editContent").value;
-      if (containsBannedWords(newContent)) {
-        alert("Mesaj yasaklı kelime içeriyor. Lütfen düzenleyin.");
-        return;
+  // Admin toggle
+  if (adminToggle) {
+    adminToggle.addEventListener("click", () => {
+      const pass = prompt("Admin şifresi:");
+      if (pass === "2009") {
+        adminMode = true;
+        alert("Admin mod aktif.");
+      } else {
+        alert("Yanlış şifre!");
       }
-      await updateDoc(doc(db, "envelopes", env.id), { content: newContent });
-      alert("Mesaj güncellendi.");
-      updateView();
+      // Re-render
+      // Not: onSnapshot zaten yeniden çiziyor, ama admin buton görünürlüğü için manuel tetikleyebiliriz
+      grid.dataset.admin = adminMode ? "1" : "0";
     });
   }
 }
 
+function renderEnvelopeList(container, list){
+  container.innerHTML = "";
+  if (!list.length) {
+    container.innerHTML = "<p class='muted'>Henüz zarf yok.</p>";
+    return;
+  }
+
+  for (const env of list) {
+    const card = document.createElement("div");
+    card.className = "envelope-card";
+
+    const stampHtml =
+      env.showEmoji && env.emoji
+        ? `<div class="stamp" title="Emoji">${escapeHtml(env.emoji)}</div>`
+        : env.logo
+          ? `<img src="${env.logo}" class="stamp" alt="Logo" />`
+          : `<div class="stamp"></div>`;
+
+    const locked = isLocked();
+
+    card.innerHTML = `
+      <div class="envelope envelope--small" style="background:${env.color || "#fbfbf7"}">
+        <div class="envelope-flap"></div>
+        <div class="stamp-area">
+          ${stampHtml}
+          <button class="btn xs toggleEmoji">Emoji</button>
+        </div>
+        <div class="address"><strong>Kimden:</strong> ${escapeHtml(env.from || "—")}</div>
+        <div class="content-preview">
+          ${locked ? "🔒 Kilitli" : escapeHtml(env.content || "")}
+        </div>
+        <div class="countdown" data-countdown>${formatCountdown(UNLOCK_DATE)}</div>
+      </div>
+      <div class="card-actions">
+        <a class="btn" href="zarf.html?id=${env.id}">Aç</a>
+        ${adminMode ? `<button class="btn danger deleteBtn">Sil</button>` : ""}
+      </div>
+    `;
+
+    // Emoji toggle (Firestore güncelle)
+    card.querySelector(".toggleEmoji").addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const newShow = !(env.showEmoji);
+      await updateDoc(doc(db, "envelopes", env.id), { showEmoji: newShow });
+    });
+
+    // Admin sil
+    if (adminMode) {
+      const del = card.querySelector(".deleteBtn");
+      del?.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        if (confirm("Bu zarfı silmek istiyor musun?")) {
+          await deleteDoc(doc(db, "envelopes", env.id));
+          alert("Zarf silindi.");
+        }
+      });
+    }
+
+    container.appendChild(card);
+  }
+}
+
+/*************************
+ * Zarf: Detay Sayfası   *
+ *************************/
+function initDetailPage(){
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get("id");
+  if (!id) {
+    const el = byId("messageContent");
+    if (el) el.textContent = "Zarf bulunamadı.";
+    return;
+  }
+
+  const fromName = byId("fromName");
+  const logoOrEmoji = byId("logoOrEmoji");
+  const toggleEmojiBtn = byId("toggleEmojiBtn");
+  const lockPanel = byId("lockPanel");
+  const contentPanel = byId("contentPanel");
+  const countdown = byId("countdown");
+  const messageContent = byId("messageContent");
+  const adminEdit = byId("adminEdit");
+  const editContent = byId("editContent");
+  const saveEdit = byId("saveEdit");
+  const adminToggle = makeAdminControls();
+
+  // Doc'u realtime dinle
+  const ref = doc(db, "envelopes", id);
+  onSnapshot(ref, (snap) => {
+    if (!snap.exists()) {
+      if (messageContent) messageContent.textContent = "Zarf bulunamadı.";
+      return;
+    }
+    const env = { id: snap.id, ...snap.data() };
+    renderDetail(env);
+  });
+
+  function renderDetail(env){
+    if (fromName) fromName.textContent = env.from || "—";
+
+    // Stamp render
+    function renderStamp(){
+      if (!logoOrEmoji) return;
+      if (env.showEmoji && env.emoji) {
+        logoOrEmoji.innerHTML = "";
+        logoOrEmoji.className = "stamp";
+        logoOrEmoji.textContent = env.emoji;
+      } else if (env.logo) {
+        logoOrEmoji.innerHTML =
+          `<img src="${env.logo}" class="stamp" style="border:2px dashed #94d3f1;border-radius:6px;background:#fff;object-fit:contain;" alt="Logo" />`;
+      } else {
+        logoOrEmoji.innerHTML = "";
+        logoOrEmoji.className = "stamp";
+      }
+    }
+    renderStamp();
+
+    // Emoji toggle
+    if (toggleEmojiBtn) {
+      toggleEmojiBtn.onclick = async () => {
+        await updateDoc(ref, { showEmoji: !env.showEmoji });
+      };
+    }
+
+    // Kilitli görüntü
+    function updateView(){
+      if (isLocked() && !adminMode) {
+        if (lockPanel) lockPanel.hidden = false;
+        if (contentPanel) contentPanel.hidden = true;
+        if (countdown) countdown.textContent = formatCountdown(UNLOCK_DATE);
+      } else {
+        if (lockPanel) lockPanel.hidden = true;
+        if (contentPanel) contentPanel.hidden = false;
+
+        if (adminMode) {
+          if (adminEdit) adminEdit.hidden = false;
+          if (editContent) editContent.value = env.content || "";
+          if (messageContent) messageContent.innerHTML = "";
+        } else {
+          if (adminEdit) adminEdit.hidden = true;
+          if (messageContent) messageContent.textContent = env.content || "";
+        }
+      }
+    }
+    updateView();
+
+    // Canlı geri sayım
+    const interval = setInterval(() => {
+      updateView();
+      if (!isLocked()) clearInterval(interval);
+    }, 1000);
+
+    // Admin düzenleme
+    if (saveEdit) {
+      saveEdit.onclick = async () => {
+        const newContent = editContent?.value || "";
+        if (containsBannedWords(newContent)) {
+          alert("Mesaj yasaklı kelime içeriyor. Lütfen düzenleyin.");
+          return;
+        }
+        await updateDoc(ref, { content: newContent });
+        alert("Mesaj güncellendi.");
+      };
+    }
+  }
+
+  // Admin toggle
+  if (adminToggle) {
+    adminToggle.addEventListener("click", () => {
+      const pass = prompt("Admin şifresi:");
+      if (pass === "2009") { adminMode = true; alert("Admin mod aktif."); }
+      else { alert("Yanlış şifre!"); }
+    });
+  }
+}
+
+/*******************
+ * Admin Araçları  *
+ *******************/
+function makeAdminControls(){
+  // Sayfada id="adminToggle" varsa ona bağlan
+  const btn = byId("adminToggle");
+  const deleteAllBtn = byId("deleteAll");
+  const exitAdminBtn = byId("exitAdmin");
+
+  if (deleteAllBtn) {
+    deleteAllBtn.onclick = async () => {
+      if (!adminMode) { alert("Önce admin moduna geç."); return; }
+      if (confirm("Tüm zarfları silmek istiyor musun?")) {
+        const snap = await getDocs(collection(db, "envelopes"));
+        // Not: Firestore toplu silme için batched write önerilir, burada basit döngü kullanıyoruz.
+        for (const d of snap.docs) {
+          await deleteDoc(d.ref);
+        }
+        alert("Tüm zarflar silindi.");
+      }
+    };
+  }
+  if (exitAdminBtn) {
+    exitAdminBtn.onclick = () => {
+      adminMode = false;
+      alert("Admin mod kapatıldı.");
+    };
+  }
+  return btn;
+}
+
+/*******************
+ * Küçük Yardımcı  *
+ *******************/
+function byId(id){ return document.getElementById(id); }
+function escapeHtml(str){
+  return String(str || "")
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
+}
