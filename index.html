@@ -4,12 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Zarf Yaz</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <h1>Zarf Yaz</h1>
   <nav><a href="zarflar.html">Zarflar</a></nav>
 
-  <button id="birthdayEnvelope">Doğum günüm için bir zarf yaz</button>
+  <button id="birthdayEnvelope" class="btn">Doğum günüm için bir zarf yaz</button>
 
   <form id="envelopeForm">
     <label>Gönderen</label>
@@ -25,14 +26,14 @@
 
     <label>Logo</label>
     <input id="logo" type="file" accept="image/*" />
-    <button id="emojiToggle" type="button">Logo/Emoji</button>
+    <button id="emojiToggle" type="button" class="btn">Logo/Emoji</button>
     <input id="emoji" type="text" placeholder="😊 🎉 ❤️" style="display:none;" />
 
     <label>Mesaj</label>
     <textarea id="content" rows="6" required></textarea>
     <small id="banHint"></small>
 
-    <button type="submit">Zarfı Oluştur</button>
+    <button type="submit" class="btn primary">Zarfı Oluştur</button>
   </form>
 
   <script type="module" src="script.js"></script>
