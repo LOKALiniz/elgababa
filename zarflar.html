@@ -10,26 +10,19 @@
   <header class="site-header">
     <h1>Zarflar</h1>
     <nav>
-      <a href="index.html">Zarf Yaz</a>
-      <button id="adminToggle" class="btn">Admin Mod</button>
+      <a href="index.html">Yeni Zarf Yaz</a>
     </nav>
   </header>
 
   <main class="container">
-    <section id="adminPanel" class="card" hidden>
-      <h2>Admin Panel</h2>
-      <button id="deleteAll" class="btn danger">Tüm Zarfları Sil</button>
-      <button id="exitAdmin" class="btn">Admin Moddan Çık</button>
-    </section>
-
-    <section class="grid" id="envelopeGrid"></section>
+    <div id="envelopeGrid" class="grid"></div>
   </main>
 
   <footer class="site-footer">
-    <p class="muted">Kartlara tıklayınca mesaj açılır. Admin modda kilit yok, mesajı görebilir ve düzenleyebilir.</p>
+    <p>26 Aralık’ta açılacak.</p>
   </footer>
 
-  <script src="script.js"></script>
-  <script>pageInit('list');</script>
+  <!-- Firebase ve script -->
+  <script type="module" src="script.js"></script>
 </body>
 </html>
